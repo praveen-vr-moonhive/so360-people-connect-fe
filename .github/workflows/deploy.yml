@@ -21,23 +21,23 @@ jobs:
     - name: Deploy to Dev
       if: github.ref == 'refs/heads/develop'
       env:
-        SERVER_IP: ${{ secrets.SERVER_IP }}
+        SERVER: ${{ secrets.DEV_NGINX_VM }}
         BUILD_DIR: /github/SO360 V.2/so360-people-connect/so360-people-connect-fe
         NGINX_ROOT: /var/www/dev.people.skyoffice360.com/html
       run: |
-        ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
-        ssh root@$SERVER_IP "mkdir -p $BUILD_DIR"
-        rsync -avz --delete --exclude 'node_modules' --exclude 'dist' --exclude '.git' ./ root@$SERVER_IP:$BUILD_DIR/
-        ssh root@$SERVER_IP "cd $BUILD_DIR && export NVM_DIR=\$HOME/.nvm && [ -s \$NVM_DIR/nvm.sh ] && . \$NVM_DIR/nvm.sh && nvm use 20 && npm ci --production=false && npm run build && mkdir -p $NGINX_ROOT && cp -r dist/* $NGINX_ROOT/"
+        ssh-keyscan $SERVER >> ~/.ssh/known_hosts
+        ssh root@$SERVER "mkdir -p $BUILD_DIR"
+        rsync -avz --delete --exclude 'node_modules' --exclude 'dist' --exclude '.git' ./ root@$SERVER:$BUILD_DIR/
+        ssh root@$SERVER "cd $BUILD_DIR && export NVM_DIR=\$HOME/.nvm && [ -s \$NVM_DIR/nvm.sh ] && . \$NVM_DIR/nvm.sh && nvm use 20 && npm ci --production=false && npm run build && mkdir -p $NGINX_ROOT && cp -r dist/* $NGINX_ROOT/"
 
     - name: Deploy to Staging
       if: github.ref == 'refs/heads/qa'
       env:
-        SERVER_IP: ${{ secrets.SERVER_IP }}
+        SERVER: ${{ secrets.DEV_NGINX_VM }}
         BUILD_DIR: /github/SO360 V.2/so360-people-connect/so360-people-connect-fe
         NGINX_ROOT: /var/www/staging.people.skyoffice360.com/html
       run: |
-        ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
-        ssh root@$SERVER_IP "mkdir -p $BUILD_DIR"
-        rsync -avz --delete --exclude 'node_modules' --exclude 'dist' --exclude '.git' ./ root@$SERVER_IP:$BUILD_DIR/
-        ssh root@$SERVER_IP "cd $BUILD_DIR && export NVM_DIR=\$HOME/.nvm && [ -s \$NVM_DIR/nvm.sh ] && . \$NVM_DIR/nvm.sh && nvm use 20 && npm ci --production=false && npm run build && mkdir -p $NGINX_ROOT && cp -r dist/* $NGINX_ROOT/"
+        ssh-keyscan $SERVER >> ~/.ssh/known_hosts
+        ssh root@$SERVER "mkdir -p $BUILD_DIR"
+        rsync -avz --delete --exclude 'node_modules' --exclude 'dist' --exclude '.git' ./ root@$SERVER:$BUILD_DIR/
+        ssh root@$SERVER "cd $BUILD_DIR && export NVM_DIR=\$HOME/.nvm && [ -s \$NVM_DIR/nvm.sh ] && . \$NVM_DIR/nvm.sh && nvm use 20 && npm ci --production=false && npm run build && mkdir -p $NGINX_ROOT && cp -r dist/* $NGINX_ROOT/"
