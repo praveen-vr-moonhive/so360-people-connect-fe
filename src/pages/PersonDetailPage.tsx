@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Mail, Phone, Calendar, DollarSign, Clock, Target,
-    Tag, Plus, Trash2, Edit2, Save, X,
+    Tag, Plus, Trash2, Edit2, Save, X, History, User, UserCheck, UserPlus,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import Toast, { ToastType } from '../components/Toast';
+import EmptyState from '../components/EmptyState';
 import { peopleApi, allocationsApi, timeEntriesApi } from '../services/peopleService';
 import type { Person, Allocation, TimeEntry, PersonRole } from '../types/people';
 
@@ -16,10 +17,16 @@ const PersonDetailPage: React.FC = () => {
     const [person, setPerson] = useState<Person | null>(null);
     const [allocations, setAllocations] = useState<Allocation[]>([]);
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+    const [employmentHistory, setEmploymentHistory] = useState<any[]>([]);
+    const [rateHistory, setRateHistory] = useState<any[]>([]);
+    const [goals, setGoals] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [editData, setEditData] = useState<Partial<Person>>({});
     const [showRoleModal, setShowRoleModal] = useState(false);
+    const [showLinkUserModal, setShowLinkUserModal] = useState(false);
+    const [showUpdateRateModal, setShowUpdateRateModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>('overview');
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
     useEffect(() => {
@@ -79,6 +86,49 @@ const PersonDetailPage: React.FC = () => {
         }
     };
 
+    const loadEmploymentHistory = async () => {
+        if (!id) return;
+        try {
+            const data = await peopleApi.getEmploymentHistory(id);
+            setEmploymentHistory(data);
+        } catch (error) {
+            console.error('Failed to load employment history:', error);
+        }
+    };
+
+    const loadRateHistory = async () => {
+        if (!id) return;
+        try {
+            const data = await peopleApi.getRateHistory(id);
+            setRateHistory(data);
+        } catch (error) {
+            console.error('Failed to load rate history:', error);
+        }
+    };
+
+    const loadGoals = async () => {
+        if (!id || !person) return;
+        try {
+            // Assuming there's a goalsApi - for now just set empty array
+            // const data = await goalsApi.getAll({ person_id: id });
+            // setGoals(data.data);
+            setGoals([]);
+        } catch (error) {
+            console.error('Failed to load goals:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (!person) return;
+        if (activeTab === 'employment-history') {
+            loadEmploymentHistory();
+        } else if (activeTab === 'rate-history') {
+            loadRateHistory();
+        } else if (activeTab === 'goals') {
+            loadGoals();
+        }
+    }, [activeTab, person]);
+
     if (loading) {
         return (
             <div className="p-6">
@@ -128,6 +178,21 @@ const PersonDetailPage: React.FC = () => {
                             <h2 className="text-xl font-bold text-white">{person.full_name}</h2>
                             <StatusBadge status={person.type} />
                             <StatusBadge status={person.status} />
+                            {person.user_id && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-500/10 border border-teal-500/30 rounded-md text-xs text-teal-400">
+                                    <UserCheck size={12} />
+                                    Linked to user account
+                                </span>
+                            )}
+                            {!person.user_id && (
+                                <button
+                                    onClick={() => setShowLinkUserModal(true)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <UserPlus size={12} />
+                                    Link User
+                                </button>
+                            )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-400">
                             {person.job_title && <span>{person.job_title}</span>}
@@ -270,63 +335,284 @@ const PersonDetailPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Allocations */}
+            {/* Tabs */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl">
-                <div className="px-5 py-4 border-b border-slate-800">
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                        <Target size={14} /> Active Allocations
-                    </h3>
+                <div className="border-b border-slate-800">
+                    <div className="flex items-center gap-1 px-5 py-3">
+                        <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'overview'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            <User size={14} className="inline mr-1.5" />
+                            Overview
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('allocations')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'allocations'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            <Target size={14} className="inline mr-1.5" />
+                            Allocations
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('time')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'time'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            <Clock size={14} className="inline mr-1.5" />
+                            Time Entries
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('employment-history')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'employment-history'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            <History size={14} className="inline mr-1.5" />
+                            Employment History
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('rate-history')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'rate-history'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            <DollarSign size={14} className="inline mr-1.5" />
+                            Rate History
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('goals')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'goals'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            <Target size={14} className="inline mr-1.5" />
+                            Goals
+                        </button>
+                    </div>
                 </div>
-                <div className="divide-y divide-slate-800">
-                    {allocations.length === 0 ? (
-                        <div className="p-5 text-sm text-slate-500">No allocations</div>
-                    ) : (
-                        allocations.map(alloc => (
-                            <div key={alloc.id} className="px-5 py-3 flex items-center justify-between">
-                                <div>
-                                    <div className="text-sm text-white">{alloc.entity_name || alloc.entity_id}</div>
-                                    <div className="text-xs text-slate-500">
-                                        {alloc.start_date} to {alloc.end_date} | {alloc.entity_type}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-white">
-                                        {alloc.allocation_value}{alloc.allocation_type === 'percentage' ? '%' : 'h'}
-                                    </span>
-                                    <StatusBadge status={alloc.status} />
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
 
-            {/* Recent Time Entries */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl">
-                <div className="px-5 py-4 border-b border-slate-800">
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                        <Clock size={14} /> Recent Time Entries
-                    </h3>
-                </div>
-                <div className="divide-y divide-slate-800">
-                    {timeEntries.length === 0 ? (
-                        <div className="p-5 text-sm text-slate-500">No time entries</div>
-                    ) : (
-                        timeEntries.map(entry => (
-                            <div key={entry.id} className="px-5 py-3 flex items-center justify-between">
-                                <div>
-                                    <div className="text-sm text-white">{entry.entity_name || entry.entity_type}</div>
-                                    <div className="text-xs text-slate-500">
-                                        {entry.work_date} | {entry.description || 'No description'}
+                <div className="p-5">
+                    {/* Overview Tab */}
+                    {activeTab === 'overview' && (
+                        <div className="space-y-4">
+                            <div className="text-sm text-slate-400">
+                                <p className="mb-2">This is the overview of {person.full_name}'s profile.</p>
+                                <p>Use the tabs above to view allocations, time entries, employment history, rate changes, and goals.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Allocations Tab */}
+                    {activeTab === 'allocations' && (
+                        <div className="space-y-3">
+                            {allocations.length === 0 ? (
+                                <EmptyState
+                                    icon={Target}
+                                    title="No allocations"
+                                    description="Project allocations for this person will appear here"
+                                />
+                            ) : (
+                                allocations.map(alloc => (
+                                    <div key={alloc.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-sm text-white">{alloc.entity_name || alloc.entity_id}</div>
+                                                <div className="text-xs text-slate-500">
+                                                    {alloc.start_date} to {alloc.end_date} | {alloc.entity_type}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-medium text-white">
+                                                    {alloc.allocation_value}{alloc.allocation_type === 'percentage' ? '%' : 'h'}
+                                                </span>
+                                                <StatusBadge status={alloc.status} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    {/* Time Entries Tab */}
+                    {activeTab === 'time' && (
+                        <div className="space-y-3">
+                            {timeEntries.length === 0 ? (
+                                <EmptyState
+                                    icon={Clock}
+                                    title="No time entries"
+                                    description="Time entries logged by this person will appear here"
+                                />
+                            ) : (
+                                timeEntries.map(entry => (
+                                    <div key={entry.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-sm text-white">{entry.entity_name || entry.entity_type}</div>
+                                                <div className="text-xs text-slate-500">
+                                                    {entry.work_date} | {entry.description || 'No description'}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-medium text-white">{entry.hours}h</span>
+                                                <span className="text-xs text-slate-400">${entry.total_cost}</span>
+                                                <StatusBadge status={entry.status} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    {/* Employment History Tab */}
+                    {activeTab === 'employment-history' && (
+                        <div className="space-y-3">
+                            {employmentHistory.map((event) => (
+                                <div key={event.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-medium text-white capitalize">{event.event_type.replace('_', ' ')}</span>
+                                                <StatusBadge status={event.event_type} />
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {new Date(event.effective_date).toLocaleDateString()}
+                                            </div>
+                                            {event.notes && (
+                                                <div className="mt-2 text-sm text-slate-400">{event.notes}</div>
+                                            )}
+                                            {event.new_department_id && (
+                                                <div className="mt-1 text-xs text-slate-500">
+                                                    Department: {event.new_department_name || event.new_department_id}
+                                                </div>
+                                            )}
+                                            {event.new_job_title && (
+                                                <div className="mt-1 text-xs text-slate-500">
+                                                    Title: {event.new_job_title}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-slate-600">
+                                            {new Date(event.created_at).toLocaleString()}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-white">{entry.hours}h</span>
-                                    <span className="text-xs text-slate-400">${entry.total_cost}</span>
-                                    <StatusBadge status={entry.status} />
+                            ))}
+                            {employmentHistory.length === 0 && (
+                                <EmptyState
+                                    icon={History}
+                                    title="No employment history"
+                                    description="Employment changes will appear here"
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Rate History Tab */}
+                    {activeTab === 'rate-history' && (
+                        <div className="space-y-3">
+                            {rateHistory.map((event) => (
+                                <div key={event.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div>
+                                                    <div className="text-xs text-slate-500">Cost Rate</div>
+                                                    <div className="text-lg font-medium text-white">
+                                                        ${event.new_cost_rate}/{person.cost_rate_unit}
+                                                    </div>
+                                                </div>
+                                                {event.new_billing_rate && (
+                                                    <div>
+                                                        <div className="text-xs text-slate-500">Billing Rate</div>
+                                                        <div className="text-lg font-medium text-teal-400">
+                                                            ${event.new_billing_rate}/{person.cost_rate_unit}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                Effective: {new Date(event.effective_date).toLocaleDateString()}
+                                            </div>
+                                            {event.reason && (
+                                                <div className="mt-2 text-sm text-slate-400">{event.reason}</div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            ))}
+                            {rateHistory.length === 0 && (
+                                <EmptyState
+                                    icon={DollarSign}
+                                    title="No rate history"
+                                    description="Rate changes will appear here"
+                                />
+                            )}
+                            <button
+                                onClick={() => setShowUpdateRateModal(true)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-white transition-colors"
+                            >
+                                <DollarSign size={16} />
+                                Update Rate
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Goals Tab */}
+                    {activeTab === 'goals' && (
+                        <div className="space-y-3">
+                            {goals.map((goal) => (
+                                <div key={goal.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-medium text-white">{goal.title}</span>
+                                                <StatusBadge status={goal.status} />
+                                                <StatusBadge status={goal.goal_type} />
+                                            </div>
+                                            {goal.description && (
+                                                <div className="text-xs text-slate-500 mt-1">{goal.description}</div>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-slate-600">
+                                            Due: {new Date(goal.target_date).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                    <div className="w-full bg-slate-900 rounded-full h-2">
+                                        <div
+                                            className="bg-teal-500 h-2 rounded-full transition-all"
+                                            style={{ width: `${goal.progress_percentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1">{goal.progress_percentage}% complete</div>
+                                </div>
+                            ))}
+                            {goals.length === 0 && (
+                                <EmptyState
+                                    icon={Target}
+                                    title="No goals"
+                                    description="Goals assigned to this person will appear here"
+                                />
+                            )}
+                        </div>
                     )}
                 </div>
             </div>

@@ -56,11 +56,24 @@ const TimeEntriesPage = lazy(() => import('./pages/TimeEntriesPage'));
 const UtilizationPage = lazy(() => import('./pages/UtilizationPage'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 
+// New page imports
+const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'));
+const LeaveTypesPage = lazy(() => import('./pages/LeaveTypesPage'));
+const LeaveRequestsPage = lazy(() => import('./pages/LeaveRequestsPage'));
+const LeaveCalendarPage = lazy(() => import('./pages/LeaveCalendarPage'));
+const LeaveApprovalsPage = lazy(() => import('./pages/LeaveApprovalsPage'));
+const ReviewTemplatesPage = lazy(() => import('./pages/ReviewTemplatesPage'));
+const PerformanceReviewsPage = lazy(() => import('./pages/PerformanceReviewsPage'));
+const ReviewDetailPage = lazy(() => import('./pages/ReviewDetailPage'));
+const GoalsPage = lazy(() => import('./pages/GoalsPage'));
+const TeamPerformancePage = lazy(() => import('./pages/TeamPerformancePage'));
+const ImportExportPage = lazy(() => import('./pages/ImportExportPage'));
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="flex h-screen bg-slate-950 text-slate-100">
             <ModuleNav />
-            <main className="w-full">
+            <main className="flex-1 overflow-auto">
                 <Suspense
                     fallback={
                         <div className="flex items-center justify-center min-h-[300px]">
@@ -82,11 +95,38 @@ const App = () => {
                 <Routes>
                     <Route path="/" element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<DashboardPage />} />
+
+                    {/* People */}
                     <Route path="people" element={<PeoplePage />} />
                     <Route path="people/:id" element={<PersonDetailPage />} />
+
+                    {/* Departments */}
+                    <Route path="departments" element={<DepartmentsPage />} />
+
+                    {/* Allocations & Time */}
                     <Route path="allocations" element={<AllocationsPage />} />
                     <Route path="time" element={<TimeEntriesPage />} />
                     <Route path="utilization" element={<UtilizationPage />} />
+
+                    {/* Leave Management */}
+                    <Route path="leaves/types" element={<LeaveTypesPage />} />
+                    <Route path="leaves/requests" element={<LeaveRequestsPage />} />
+                    <Route path="leaves/calendar" element={<LeaveCalendarPage />} />
+                    <Route path="leaves/approvals" element={<LeaveApprovalsPage />} />
+
+                    {/* Performance Reviews */}
+                    <Route path="reviews/templates" element={<ReviewTemplatesPage />} />
+                    <Route path="reviews" element={<PerformanceReviewsPage />} />
+                    <Route path="reviews/:id" element={<ReviewDetailPage />} />
+
+                    {/* Goals */}
+                    <Route path="goals" element={<GoalsPage />} />
+                    <Route path="team-performance" element={<TeamPerformancePage />} />
+
+                    {/* Import/Export */}
+                    <Route path="import-export" element={<ImportExportPage />} />
+
+                    {/* Events */}
                     <Route path="events" element={<EventsPage />} />
                 </Routes>
             </PeopleShellInitializer>

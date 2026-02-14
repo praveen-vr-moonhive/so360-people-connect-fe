@@ -30,6 +30,13 @@ const MockShellProvider = ({ children }: { children: React.ReactNode }) => {
         setCurrentTenant: () => {},
         setCurrentOrg: () => {},
         accessToken: 'mock-access-token',
+        enabledModules: ['module:people'],
+        isModuleEnabled: () => true,
+        toggleModule: async () => {},
+        refreshModules: async () => {},
+        modulesLoading: false,
+        emitNotification: async () => ({ success: true, notificationIds: [], errors: [] }),
+        recordActivity: async () => {},
     };
 
     return (

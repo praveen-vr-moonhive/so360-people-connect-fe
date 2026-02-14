@@ -35,7 +35,7 @@ export default defineConfig({
         cors: true,
         proxy: {
             '/people-api': {
-                target: 'http://localhost:3013',
+                target: 'http://localhost:3015',
                 changeOrigin: true,
                 rewrite: function (path) { return path.replace(/^\/people-api/, ''); },
             },
@@ -55,7 +55,7 @@ export default defineConfig({
         cors: true,
         proxy: {
             '/people-api': {
-                target: 'http://localhost:3013',
+                target: 'http://localhost:3015',
                 changeOrigin: true,
                 rewrite: function (path) { return path.replace(/^\/people-api/, ''); },
             },

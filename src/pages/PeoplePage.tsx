@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, UserPlus, Search, Filter, Mail, Phone, Briefcase } from 'lucide-react';
+import { Users, UserPlus, Search, Filter, Mail, Phone, Briefcase, Upload, Download, ChevronDown } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
@@ -8,15 +8,23 @@ import Modal from '../components/Modal';
 import Toast, { ToastType } from '../components/Toast';
 import { peopleApi } from '../services/peopleService';
 import type { Person, CreatePersonPayload, PersonStatus } from '../types/people';
+import { DepartmentSelector, UserSelector } from '@so360/design-system';
+import { usePeopleContext } from '../hooks/useShellContext';
 
 const PeoplePage: React.FC = () => {
     const navigate = useNavigate();
+    const { orgId, tenantId } = usePeopleContext();
     const [people, setPeople] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [typeFilter, setTypeFilter] = useState<string>('');
+    const [departmentFilter, setDepartmentFilter] = useState<string>('');
+    const [employmentTypeFilter, setEmploymentTypeFilter] = useState<string>('');
+    const [joiningFromFilter, setJoiningFromFilter] = useState<string>('');
+    const [joiningToFilter, setJoiningToFilter] = useState<string>('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
     const loadPeople = useCallback(async () => {
@@ -26,6 +34,10 @@ const PeoplePage: React.FC = () => {
                 search: search || undefined,
                 status: statusFilter || undefined,
                 type: typeFilter || undefined,
+                department_id: departmentFilter || undefined,
+                employment_type: employmentTypeFilter || undefined,
+                date_of_joining_from: joiningFromFilter || undefined,
+                date_of_joining_to: joiningToFilter || undefined,
             });
             setPeople(result.data);
         } catch (error) {
@@ -34,7 +46,7 @@ const PeoplePage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [search, statusFilter, typeFilter]);
+    }, [search, statusFilter, typeFilter, departmentFilter, employmentTypeFilter, joiningFromFilter, joiningToFilter]);
 
     useEffect(() => {
         loadPeople();
@@ -51,19 +63,81 @@ const PeoplePage: React.FC = () => {
         }
     };
 
+    const handleExport = async (format: 'csv' | 'excel') => {
+        try {
+            const blob = await peopleApi.export(format, {
+                status: statusFilter,
+                type: typeFilter,
+                department_id: departmentFilter,
+                employment_type: employmentTypeFilter,
+                date_of_joining_from: joiningFromFilter,
+                date_of_joining_to: joiningToFilter,
+            });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `people-${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
+            a.click();
+            setShowExportMenu(false);
+            setToast({ message: `Exported ${people.length} people as ${format.toUpperCase()}`, type: 'success' });
+        } catch (error) {
+            setToast({ message: 'Failed to export people', type: 'error' });
+        }
+    };
+
     return (
         <div className="p-6 space-y-5">
             <PageHeader
                 title="People Registry"
                 subtitle="Manage people as costed, allocatable resources"
                 actions={
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                        <UserPlus size={16} />
-                        Add Person
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {/* Import Button */}
+                        <button
+                            onClick={() => navigate('/import-export')}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <Upload size={16} />
+                            Import
+                        </button>
+
+                        {/* Export Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                                <Download size={16} />
+                                Export
+                                <ChevronDown size={14} />
+                            </button>
+                            {showExportMenu && (
+                                <div className="absolute right-0 mt-2 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10">
+                                    <button
+                                        onClick={() => handleExport('csv')}
+                                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 rounded-t-lg"
+                                    >
+                                        Export as CSV
+                                    </button>
+                                    <button
+                                        onClick={() => handleExport('excel')}
+                                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 rounded-b-lg"
+                                    >
+                                        Export as Excel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Add Person Button */}
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <UserPlus size={16} />
+                            Add Person
+                        </button>
+                    </div>
                 }
             />
 
@@ -99,6 +173,50 @@ const PeoplePage: React.FC = () => {
                     <option value="employee">Employee</option>
                     <option value="contractor">Contractor</option>
                 </select>
+
+                {/* Department Filter */}
+                <DepartmentSelector
+                    value={departmentFilter}
+                    onChange={(id: string | null) => setDepartmentFilter(id || '')}
+                    orgId={orgId}
+                    tenantId={tenantId}
+                    placeholder="All Departments"
+                    className="w-48"
+                    allowClear
+                />
+
+                {/* Employment Type Filter */}
+                <select
+                    value={employmentTypeFilter}
+                    onChange={(e) => setEmploymentTypeFilter(e.target.value)}
+                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                >
+                    <option value="">All Employment Types</option>
+                    <option value="full_time">Full Time</option>
+                    <option value="part_time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="intern">Intern</option>
+                </select>
+
+                {/* Date of Joining Filter */}
+                <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-400">Joined:</label>
+                    <input
+                        type="date"
+                        value={joiningFromFilter}
+                        onChange={(e) => setJoiningFromFilter(e.target.value)}
+                        className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                        placeholder="From"
+                    />
+                    <span className="text-slate-600">-</span>
+                    <input
+                        type="date"
+                        value={joiningToFilter}
+                        onChange={(e) => setJoiningToFilter(e.target.value)}
+                        className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                        placeholder="To"
+                    />
+                </div>
             </div>
 
             {/* People List */}
@@ -213,7 +331,14 @@ interface CreatePersonModalProps {
 }
 
 const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, onCreate }) => {
-    const [formData, setFormData] = useState<CreatePersonPayload>({
+    const { orgId, tenantId } = usePeopleContext();
+    const [formData, setFormData] = useState<CreatePersonPayload & {
+        userLinkageMode?: 'none' | 'link' | 'invite';
+        existingUserId?: string;
+        inviteEmail?: string;
+        inviteRole?: string;
+        sendInviteEmail?: boolean;
+    }>({
         full_name: '',
         email: '',
         phone: '',
@@ -227,6 +352,8 @@ const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, 
         available_hours_per_day: 8,
         available_days_per_week: 5,
         start_date: new Date().toISOString().split('T')[0],
+        userLinkageMode: 'invite',
+        sendInviteEmail: true,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -239,6 +366,7 @@ const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, 
             department: '', job_title: '', cost_rate: 0, cost_rate_unit: 'hour',
             currency: 'USD', billing_rate: 0, available_hours_per_day: 8,
             available_days_per_week: 5, start_date: new Date().toISOString().split('T')[0],
+            userLinkageMode: 'invite', sendInviteEmail: true,
         });
     };
 
@@ -394,6 +522,98 @@ const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, 
                                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
                             />
                         </div>
+                    </div>
+                </div>
+
+                {/* User Linkage */}
+                <div>
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                        User Account Linkage
+                    </h4>
+                    <div className="space-y-3">
+                        <label className="flex items-center gap-2 p-3 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:border-teal-500">
+                            <input
+                                type="radio"
+                                name="userLinkage"
+                                value="none"
+                                checked={formData.userLinkageMode === 'none'}
+                                onChange={() => updateField('userLinkageMode', 'none')}
+                                className="text-teal-500 focus:ring-teal-500"
+                            />
+                            <div>
+                                <div className="text-sm font-medium text-white">Employee Only (No System Access)</div>
+                                <div className="text-xs text-slate-500">Person will not have access to SO360 system</div>
+                            </div>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-3 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:border-teal-500">
+                            <input
+                                type="radio"
+                                name="userLinkage"
+                                value="link"
+                                checked={formData.userLinkageMode === 'link'}
+                                onChange={() => updateField('userLinkageMode', 'link')}
+                                className="text-teal-500 focus:ring-teal-500"
+                            />
+                            <div className="flex-1">
+                                <div className="text-sm font-medium text-white">Link to Existing User</div>
+                                <div className="text-xs text-slate-500 mb-2">Select an existing user account to link</div>
+                                {formData.userLinkageMode === 'link' && (
+                                    <UserSelector
+                                        value={formData.existingUserId}
+                                        onChange={(userId: string | null) => updateField('existingUserId', userId)}
+                                        orgId={orgId}
+                                        tenantId={tenantId}
+                                        placeholder="Select user..."
+                                    />
+                                )}
+                            </div>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-3 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:border-teal-500">
+                            <input
+                                type="radio"
+                                name="userLinkage"
+                                value="invite"
+                                checked={formData.userLinkageMode === 'invite'}
+                                onChange={() => updateField('userLinkageMode', 'invite')}
+                                className="text-teal-500 focus:ring-teal-500"
+                            />
+                            <div className="flex-1">
+                                <div className="text-sm font-medium text-white">Invite as New User (Recommended)</div>
+                                <div className="text-xs text-slate-500 mb-2">Send invitation email to create user account</div>
+                                {formData.userLinkageMode === 'invite' && (
+                                    <div className="space-y-2">
+                                        <input
+                                            type="email"
+                                            value={formData.inviteEmail || formData.email}
+                                            onChange={(e) => updateField('inviteEmail', e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                                            placeholder="Email for invitation"
+                                            required={formData.userLinkageMode === 'invite'}
+                                        />
+                                        <select
+                                            value={formData.inviteRole || 'user'}
+                                            onChange={(e) => updateField('inviteRole', e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                                        >
+                                            <option value="user">User</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                        <label className="flex items-center gap-2 text-xs text-slate-400">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.sendInviteEmail !== false}
+                                                onChange={(e) => updateField('sendInviteEmail', e.target.checked)}
+                                                className="text-teal-500 focus:ring-teal-500"
+                                            />
+                                            Send invitation email immediately
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        </label>
                     </div>
                 </div>
 

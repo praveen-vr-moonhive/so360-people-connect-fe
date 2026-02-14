@@ -109,7 +109,17 @@ const api = new ApiClient(API_BASE_URL);
 // =============================================================================
 
 export const peopleApi = {
-  getAll: async (params?: { status?: string; type?: string; search?: string; page?: number; limit?: number }): Promise<PaginatedResponse<Person>> => {
+  getAll: async (params?: {
+    status?: string;
+    type?: string;
+    search?: string;
+    department_id?: string;
+    employment_type?: string;
+    date_of_joining_from?: string;
+    date_of_joining_to?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Person>> => {
     return api.get<PaginatedResponse<Person>>('/people', params);
   },
 
@@ -136,6 +146,56 @@ export const peopleApi = {
 
   removeRole: async (personId: string, roleId: string): Promise<{ message: string }> => {
     return api.delete<{ message: string }>(`/people/${personId}/roles/${roleId}`);
+  },
+
+  // Export
+  export: async (format: 'csv' | 'excel', filters?: Record<string, any>): Promise<Blob> => {
+    const queryString = filters
+      ? '?' + new URLSearchParams(
+          Object.entries(filters).reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              acc[key] = String(value);
+            }
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()
+      : '';
+
+    const response = await fetch(`${API_BASE_URL}/people/export/${format}${queryString}`, {
+      method: 'GET',
+      headers: {
+        'X-Tenant-Id': TENANT_ID,
+        'X-Org-Id': ORG_ID,
+        'X-User-Id': USER_ID,
+        'X-User-Name': USER_NAME,
+        ...(ACCESS_TOKEN ? { Authorization: `Bearer ${ACCESS_TOKEN}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to export people');
+    }
+
+    return response.blob();
+  },
+
+  // Employment History
+  getEmploymentHistory: async (personId: string): Promise<any[]> => {
+    return api.get<any[]>(`/people/${personId}/employment-history`);
+  },
+
+  // Rate History
+  getRateHistory: async (personId: string): Promise<any[]> => {
+    return api.get<any[]>(`/people/${personId}/rate-history`);
+  },
+
+  // User Linkage
+  linkUser: async (personId: string, userId: string): Promise<Person> => {
+    return api.post<Person>(`/people/${personId}/link-user`, { user_id: userId });
+  },
+
+  inviteUser: async (personId: string, email: string, role: string): Promise<Person> => {
+    return api.post<Person>(`/people/${personId}/invite-user`, { email, role });
   },
 };
 
