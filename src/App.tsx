@@ -1,6 +1,7 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ShellContext } from '@so360/shell-context';
+import { eventBus } from '@so360/event-bus';
 import { peopleService } from './services/peopleService';
 import ModuleNav from './components/ModuleNav';
 
@@ -70,9 +71,16 @@ const TeamPerformancePage = lazy(() => import('./pages/TeamPerformancePage'));
 const ImportExportPage = lazy(() => import('./pages/ImportExportPage'));
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
+    const [shellNavActive, setShellNavActive] = useState(false);
+
+    useEffect(() => {
+        const unsub = eventBus.subscribe('SHELL_NAV_ACTIVE', () => setShellNavActive(true));
+        return unsub;
+    }, []);
+
     return (
         <div className="flex h-screen bg-slate-950 text-slate-100">
-            <ModuleNav />
+            {!shellNavActive && <ModuleNav />}
             <main className="flex-1 overflow-auto">
                 <Suspense
                     fallback={
