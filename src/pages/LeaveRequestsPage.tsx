@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import Toast, { ToastType } from '../components/Toast';
 import { leaveRequestsApi, LeaveRequest, CreateLeaveRequestPayload, LeaveBalance } from '../services/leaveRequestsService';
 import { leaveTypesApi, LeaveType } from '../services/leaveTypesService';
+import { apiContext } from '../services/apiClient';
 
 const LeaveRequestsPage: React.FC = () => {
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -225,7 +226,7 @@ const CreateLeaveRequestModal: React.FC<CreateLeaveRequestModalProps> = ({ isOpe
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
     const [balances, setBalances] = useState<LeaveBalance[]>([]);
     const [formData, setFormData] = useState<CreateLeaveRequestPayload>({
-        person_id: '', // Will be set to current user
+        person_id: apiContext.getUserId() || '',
         leave_type_id: '',
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date().toISOString().split('T')[0],
@@ -237,7 +238,7 @@ const CreateLeaveRequestModal: React.FC<CreateLeaveRequestModalProps> = ({ isOpe
     useEffect(() => {
         if (isOpen) {
             loadLeaveTypes();
-            // TODO: Get current user ID and load balances
+            loadBalances();
         }
     }, [isOpen]);
 
@@ -247,6 +248,18 @@ const CreateLeaveRequestModal: React.FC<CreateLeaveRequestModalProps> = ({ isOpe
             setLeaveTypes(result.data);
         } catch (error) {
             console.error('Failed to load leave types:', error);
+        }
+    };
+
+    const loadBalances = async () => {
+        try {
+            const userId = apiContext.getUserId();
+            if (userId) {
+                const result = await leaveRequestsApi.getBalances(userId);
+                setBalances(result.data || []);
+            }
+        } catch (error) {
+            console.error('Failed to load leave balances:', error);
         }
     };
 

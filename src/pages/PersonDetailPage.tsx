@@ -9,6 +9,7 @@ import Modal from '../components/Modal';
 import Toast, { ToastType } from '../components/Toast';
 import EmptyState from '../components/EmptyState';
 import { peopleApi, allocationsApi, timeEntriesApi } from '../services/peopleService';
+import { goalsApi, Goal } from '../services/goalsService';
 import type { Person, Allocation, TimeEntry, PersonRole } from '../types/people';
 
 const PersonDetailPage: React.FC = () => {
@@ -109,12 +110,11 @@ const PersonDetailPage: React.FC = () => {
     const loadGoals = async () => {
         if (!id || !person) return;
         try {
-            // Assuming there's a goalsApi - for now just set empty array
-            // const data = await goalsApi.getAll({ person_id: id });
-            // setGoals(data.data);
-            setGoals([]);
+            const data = await goalsApi.getAll({ person_id: id });
+            setGoals(data.data || []);
         } catch (error) {
             console.error('Failed to load goals:', error);
+            setGoals([]);
         }
     };
 

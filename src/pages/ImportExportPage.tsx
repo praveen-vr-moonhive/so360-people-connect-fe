@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Download, Upload, FileDown, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, Upload, FileDown, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Toast, { ToastType } from '../components/Toast';
 import { peopleApi } from '../services/peopleService';
+import { departmentsApi, Department } from '../services/departmentsService';
 
 const ImportExportPage: React.FC = () => {
     const [exportFormat, setExportFormat] = useState<'csv' | 'excel'>('csv');
@@ -11,36 +12,65 @@ const ImportExportPage: React.FC = () => {
     const [departmentFilter, setDepartmentFilter] = useState<string>('');
     const [importFile, setImportFile] = useState<File | null>(null);
     const [validateOnly, setValidateOnly] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [validationResults, setValidationResults] = useState<{
         success: number;
         errors: Array<{ row: number; field: string; message: string }>;
     } | null>(null);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+    const [departments, setDepartments] = useState<Department[]>([]);
+
+    useEffect(() => {
+        departmentsApi.getAll({ is_active: true }).then(res => {
+            setDepartments(res.data || []);
+        }).catch(() => { /* ignore */ });
+    }, []);
 
     const handleExport = async () => {
+        setIsExporting(true);
         try {
-            // TODO: Implement actual export API call
-            // const params = {
-            //     format: exportFormat,
-            //     status: statusFilter || undefined,
-            //     type: typeFilter || undefined,
-            //     department: departmentFilter || undefined,
-            // };
-            // const blob = await peopleApi.export(params);
-            // downloadFile(blob, `people-export.${exportFormat}`);
+            const filters: Record<string, string> = {};
+            if (statusFilter) filters.status = statusFilter;
+            if (typeFilter) filters.type = typeFilter;
+            if (departmentFilter) filters.department_id = departmentFilter;
 
-            setToast({ message: `Export as ${exportFormat.toUpperCase()} (Not yet implemented)`, type: 'success' });
-        } catch (error) {
-            setToast({ message: 'Failed to export people', type: 'error' });
+            const blob = await peopleApi.export(exportFormat, filters);
+
+            // Download the file
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `people-export.${exportFormat === 'excel' ? 'xlsx' : 'csv'}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+
+            setToast({ message: `Exported successfully as ${exportFormat.toUpperCase()}`, type: 'success' });
+        } catch (error: any) {
+            setToast({ message: error.message || 'Failed to export people', type: 'error' });
+        } finally {
+            setIsExporting(false);
         }
     };
 
     const handleDownloadTemplate = async () => {
         try {
-            // TODO: Implement actual template download
-            setToast({ message: 'Download template (Not yet implemented)', type: 'success' });
-        } catch (error) {
-            setToast({ message: 'Failed to download template', type: 'error' });
+            const blob = await peopleApi.getImportTemplate();
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'people-import-template.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+
+            setToast({ message: 'Template downloaded successfully', type: 'success' });
+        } catch (error: any) {
+            setToast({ message: error.message || 'Failed to download template', type: 'error' });
         }
     };
 
@@ -55,40 +85,38 @@ const ImportExportPage: React.FC = () => {
     const handleImport = async () => {
         if (!importFile) return;
 
+        setIsImporting(true);
         try {
-            // TODO: Implement actual import API call
-            // const formData = new FormData();
-            // formData.append('file', importFile);
-            // formData.append('validate_only', validateOnly.toString());
-            // const result = await peopleApi.import(formData);
-
-            // Mock validation results
-            const mockResults = {
-                success: 42,
-                errors: [
-                    { row: 5, field: 'email', message: 'Invalid email format' },
-                    { row: 12, field: 'cost_rate', message: 'Cost rate must be a number' },
-                    { row: 18, field: 'full_name', message: 'Full name is required' },
-                ],
-            };
-
-            setValidationResults(mockResults);
-
-            if (mockResults.errors.length === 0) {
-                setToast({
-                    message: validateOnly
-                        ? `Validation successful! ${mockResults.success} records are valid.`
-                        : `Import successful! ${mockResults.success} people imported.`,
-                    type: 'success',
+            if (validateOnly) {
+                const result = await peopleApi.validateImport(importFile);
+                setValidationResults({
+                    success: result.errors?.length === 0 ? 1 : 0,
+                    errors: result.errors || [],
                 });
+
+                if (!result.errors || result.errors.length === 0) {
+                    setToast({ message: 'Validation successful! All records are valid.', type: 'success' });
+                } else {
+                    setToast({ message: `Validation found ${result.errors.length} errors.`, type: 'error' });
+                }
             } else {
-                setToast({
-                    message: `Validation found ${mockResults.errors.length} errors.`,
-                    type: 'error',
+                const result = await peopleApi.import(importFile);
+                setValidationResults({
+                    success: result.success || 0,
+                    errors: result.errors || [],
                 });
+
+                if (!result.errors || result.errors.length === 0) {
+                    setToast({ message: `Import successful! ${result.success} people imported.`, type: 'success' });
+                    setImportFile(null);
+                } else {
+                    setToast({ message: `Imported ${result.success} records with ${result.errors.length} errors.`, type: 'error' });
+                }
             }
-        } catch (error) {
-            setToast({ message: 'Failed to import people', type: 'error' });
+        } catch (error: any) {
+            setToast({ message: error.message || 'Failed to process import', type: 'error' });
+        } finally {
+            setIsImporting(false);
         }
     };
 
@@ -153,9 +181,9 @@ const ImportExportPage: React.FC = () => {
                                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
                             >
                                 <option value="">All Departments</option>
-                                <option value="engineering">Engineering</option>
-                                <option value="sales">Sales</option>
-                                <option value="marketing">Marketing</option>
+                                {departments.map(dept => (
+                                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -163,10 +191,11 @@ const ImportExportPage: React.FC = () => {
                     <div className="flex gap-3">
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors"
+                            disabled={isExporting}
+                            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                         >
-                            <Download size={16} />
-                            Export People
+                            {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                            {isExporting ? 'Exporting...' : 'Export People'}
                         </button>
                         <button
                             onClick={handleDownloadTemplate}
@@ -227,11 +256,11 @@ const ImportExportPage: React.FC = () => {
                     {/* Import Button */}
                     <button
                         onClick={handleImport}
-                        disabled={!importFile}
+                        disabled={!importFile || isImporting}
                         className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Upload size={16} />
-                        {validateOnly ? 'Validate' : 'Import'}
+                        {isImporting ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                        {isImporting ? 'Processing...' : validateOnly ? 'Validate' : 'Import'}
                     </button>
 
                     {/* Validation Results */}

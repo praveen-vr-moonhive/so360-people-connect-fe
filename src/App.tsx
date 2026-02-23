@@ -1,9 +1,7 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ShellContext } from '@so360/shell-context';
-import { eventBus } from '@so360/event-bus';
 import { peopleService } from './services/peopleService';
-import ModuleNav from './components/ModuleNav';
 
 // Shell Context Synchronizer
 const PeopleShellInitializer = ({ children }: { children: React.ReactNode }) => {
@@ -68,19 +66,12 @@ const PerformanceReviewsPage = lazy(() => import('./pages/PerformanceReviewsPage
 const ReviewDetailPage = lazy(() => import('./pages/ReviewDetailPage'));
 const GoalsPage = lazy(() => import('./pages/GoalsPage'));
 const TeamPerformancePage = lazy(() => import('./pages/TeamPerformancePage'));
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage'));
 const ImportExportPage = lazy(() => import('./pages/ImportExportPage'));
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-    const [shellNavActive, setShellNavActive] = useState(false);
-
-    useEffect(() => {
-        const unsub = eventBus.subscribe('SHELL_NAV_ACTIVE', () => setShellNavActive(true));
-        return unsub;
-    }, []);
-
     return (
-        <div className="flex h-screen bg-slate-950 text-slate-100">
-            {!shellNavActive && <ModuleNav />}
+        <div className="flex h-full bg-slate-950 text-slate-100">
             <main className="flex-1 overflow-auto">
                 <Suspense
                     fallback={
@@ -127,9 +118,10 @@ const App = () => {
                     <Route path="reviews" element={<PerformanceReviewsPage />} />
                     <Route path="reviews/:id" element={<ReviewDetailPage />} />
 
-                    {/* Goals */}
+                    {/* Goals & Performance */}
                     <Route path="goals" element={<GoalsPage />} />
                     <Route path="team-performance" element={<TeamPerformancePage />} />
+                    <Route path="feedback" element={<FeedbackPage />} />
 
                     {/* Import/Export */}
                     <Route path="import-export" element={<ImportExportPage />} />

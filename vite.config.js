@@ -17,7 +17,6 @@ export default defineConfig({
                 react: { singleton: true, requiredVersion: '^19.2.0' },
                 'react-dom': { singleton: true, requiredVersion: '^19.2.0' },
                 'react-router-dom': { singleton: true, requiredVersion: '^7.12.0' },
-                'framer-motion': { singleton: true },
                 'lucide-react': { singleton: true },
                 '@so360/shell-context': { singleton: true },
                 '@so360/design-system': { singleton: true },
@@ -32,6 +31,7 @@ export default defineConfig({
     },
     server: {
         port: 3014,
+        strictPort: true,
         cors: true,
         proxy: {
             '/people-api': {
@@ -52,6 +52,7 @@ export default defineConfig({
     },
     preview: {
         port: 3014,
+        strictPort: true,
         cors: true,
         proxy: {
             '/people-api': {

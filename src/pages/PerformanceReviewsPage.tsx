@@ -8,6 +8,8 @@ import Modal from '../components/Modal';
 import Toast, { ToastType } from '../components/Toast';
 import { performanceReviewsApi, PerformanceReview, CreatePerformanceReviewPayload } from '../services/performanceReviewsService';
 import { reviewTemplatesApi, ReviewTemplate } from '../services/reviewTemplatesService';
+import { peopleApi } from '../services/peopleService';
+import type { Person } from '../types/people';
 
 const PerformanceReviewsPage: React.FC = () => {
     const navigate = useNavigate();
@@ -262,6 +264,9 @@ interface CreateReviewModalProps {
 
 const CreateReviewModal: React.FC<CreateReviewModalProps> = ({ isOpen, onClose, onCreate }) => {
     const [templates, setTemplates] = useState<ReviewTemplate[]>([]);
+    const [people, setPeople] = useState<Person[]>([]);
+    const [personSearch, setPersonSearch] = useState('');
+    const [reviewerSearch, setReviewerSearch] = useState('');
     const [formData, setFormData] = useState<CreatePerformanceReviewPayload>({
         person_id: '',
         template_id: '',
@@ -275,6 +280,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({ isOpen, onClose, 
     useEffect(() => {
         if (isOpen) {
             loadTemplates();
+            loadPeople();
         }
     }, [isOpen]);
 
@@ -287,10 +293,18 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({ isOpen, onClose, 
         }
     };
 
+    const loadPeople = async () => {
+        try {
+            const result = await peopleApi.getAll({ status: 'active', limit: 200 });
+            setPeople(result.data || []);
+        } catch (error) {
+            console.error('Failed to load people:', error);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.person_id || !formData.template_id || !formData.reviewer_id) return;
-
         onCreate(formData);
     };
 
@@ -298,9 +312,96 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({ isOpen, onClose, 
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    const filteredPeopleForPerson = people.filter(p =>
+        !personSearch || p.full_name.toLowerCase().includes(personSearch.toLowerCase())
+    );
+
+    const filteredPeopleForReviewer = people.filter(p =>
+        !reviewerSearch || p.full_name.toLowerCase().includes(reviewerSearch.toLowerCase())
+    );
+
+    const selectedPerson = people.find(p => p.id === formData.person_id);
+    const selectedReviewer = people.find(p => p.id === formData.reviewer_id);
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Create Performance Review">
             <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Person Selector */}
+                <div>
+                    <label className="block text-xs text-slate-400 mb-1">Person Being Reviewed *</label>
+                    {selectedPerson ? (
+                        <div className="flex items-center justify-between px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg">
+                            <span className="text-sm text-white">{selectedPerson.full_name}</span>
+                            <button type="button" onClick={() => updateField('person_id', '')} className="text-xs text-slate-400 hover:text-red-400">Clear</button>
+                        </div>
+                    ) : (
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Search people..."
+                                value={personSearch}
+                                onChange={(e) => setPersonSearch(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                            />
+                            {personSearch && (
+                                <div className="mt-1 max-h-32 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg">
+                                    {filteredPeopleForPerson.slice(0, 10).map(p => (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => { updateField('person_id', p.id); setPersonSearch(''); }}
+                                            className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
+                                        >
+                                            {p.full_name} {p.job_title ? `(${p.job_title})` : ''}
+                                        </button>
+                                    ))}
+                                    {filteredPeopleForPerson.length === 0 && (
+                                        <p className="px-3 py-2 text-xs text-slate-500">No matches found</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Reviewer Selector */}
+                <div>
+                    <label className="block text-xs text-slate-400 mb-1">Reviewer (Manager) *</label>
+                    {selectedReviewer ? (
+                        <div className="flex items-center justify-between px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg">
+                            <span className="text-sm text-white">{selectedReviewer.full_name}</span>
+                            <button type="button" onClick={() => updateField('reviewer_id', '')} className="text-xs text-slate-400 hover:text-red-400">Clear</button>
+                        </div>
+                    ) : (
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Search reviewer..."
+                                value={reviewerSearch}
+                                onChange={(e) => setReviewerSearch(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                            />
+                            {reviewerSearch && (
+                                <div className="mt-1 max-h-32 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg">
+                                    {filteredPeopleForReviewer.slice(0, 10).map(p => (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => { updateField('reviewer_id', p.id); setReviewerSearch(''); }}
+                                            className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
+                                        >
+                                            {p.full_name} {p.job_title ? `(${p.job_title})` : ''}
+                                        </button>
+                                    ))}
+                                    {filteredPeopleForReviewer.length === 0 && (
+                                        <p className="px-3 py-2 text-xs text-slate-500">No matches found</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 <div>
                     <label className="block text-xs text-slate-400 mb-1">Review Template *</label>
                     <select
@@ -359,12 +460,6 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({ isOpen, onClose, 
                     </div>
                 </div>
 
-                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-                    <p className="text-xs text-slate-400">
-                        Note: Person and Reviewer selection will use PeopleSelector component from design-system.
-                    </p>
-                </div>
-
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                     <button
                         type="button"
@@ -375,7 +470,8 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({ isOpen, onClose, 
                     </button>
                     <button
                         type="submit"
-                        className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors"
+                        disabled={!formData.person_id || !formData.reviewer_id || !formData.template_id}
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Create Review
                     </button>

@@ -11,6 +11,9 @@ import type { Person, CreatePersonPayload, PersonStatus } from '../types/people'
 import DepartmentSelector from '../components/DepartmentSelector';
 import UserSelector from '../components/UserSelector';
 import { usePeopleContext } from '../hooks/useShellContext';
+import { apiContext } from '../services/apiClient';
+
+const DEFAULT_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR'];
 
 const PeoplePage: React.FC = () => {
     const navigate = useNavigate();
@@ -27,6 +30,7 @@ const PeoplePage: React.FC = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+    const [currencies, setCurrencies] = useState<string[]>(DEFAULT_CURRENCIES);
 
     const loadPeople = useCallback(async () => {
         try {
@@ -52,6 +56,38 @@ const PeoplePage: React.FC = () => {
     useEffect(() => {
         loadPeople();
     }, [loadPeople]);
+
+    // Fetch supported currencies from org business_settings (Core API)
+    useEffect(() => {
+        const fetchCurrencies = async () => {
+            try {
+                const token = apiContext.getAccessToken();
+                const effectiveOrgId = orgId || apiContext.getOrgId();
+                const effectiveTenantId = tenantId || apiContext.getTenantId();
+                const res = await fetch(`/v1/business-settings/${effectiveOrgId}`, {
+                    headers: {
+                        'X-Tenant-Id': effectiveTenantId,
+                        'X-Org-Id': effectiveOrgId,
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                });
+                if (res.ok) {
+                    const settings = await res.json();
+                    const baseCurrency = settings?.currency || settings?.base_currency;
+                    if (baseCurrency && !DEFAULT_CURRENCIES.includes(baseCurrency)) {
+                        setCurrencies([baseCurrency, ...DEFAULT_CURRENCIES]);
+                    }
+                    // If settings include a currencies array, use it
+                    if (Array.isArray(settings?.supported_currencies) && settings.supported_currencies.length > 0) {
+                        setCurrencies(settings.supported_currencies);
+                    }
+                }
+            } catch {
+                // Silently fall back to defaults
+            }
+        };
+        fetchCurrencies();
+    }, [orgId, tenantId]);
 
     const handleCreate = async (data: CreatePersonPayload) => {
         try {
@@ -314,6 +350,7 @@ const PeoplePage: React.FC = () => {
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onCreate={handleCreate}
+                currencies={currencies}
             />
 
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -329,9 +366,10 @@ interface CreatePersonModalProps {
     isOpen: boolean;
     onClose: () => void;
     onCreate: (data: CreatePersonPayload) => void;
+    currencies?: string[];
 }
 
-const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, onCreate }) => {
+const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, onCreate, currencies = DEFAULT_CURRENCIES }) => {
     const { orgId, tenantId } = usePeopleContext();
     const [formData, setFormData] = useState<CreatePersonPayload & {
         userLinkageMode?: 'none' | 'link' | 'invite';
@@ -486,10 +524,9 @@ const CreatePersonModal: React.FC<CreatePersonModalProps> = ({ isOpen, onClose, 
                                 onChange={(e) => updateField('currency', e.target.value)}
                                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
                             >
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="GBP">GBP</option>
-                                <option value="INR">INR</option>
+                                {currencies.map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
