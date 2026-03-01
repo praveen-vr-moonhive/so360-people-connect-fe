@@ -41,6 +41,10 @@ const MockShellProvider = ({ children }: { children: React.ReactNode }) => {
         toggleModule: async () => {},
         refreshModules: async () => {},
         modulesLoading: false,
+        notifications: [],
+        unreadCount: 0,
+        markAsRead: async () => { },
+        markAllAsRead: async () => { },
         emitNotification: async () => ({ success: true, notificationIds: [], errors: [] }),
         recordActivity: async () => {},
     } as unknown as ShellContextType;

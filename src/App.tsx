@@ -1,11 +1,11 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ShellContext } from '@so360/shell-context';
+import { useShellBridge } from '@so360/shell-context';
 import { peopleService } from './services/peopleService';
 
 // Shell Context Synchronizer
 const PeopleShellInitializer = ({ children }: { children: React.ReactNode }) => {
-    const shell = React.useContext(ShellContext);
+    const shell = useShellBridge();
     const [isSynced, setIsSynced] = React.useState(false);
 
     useEffect(() => {
