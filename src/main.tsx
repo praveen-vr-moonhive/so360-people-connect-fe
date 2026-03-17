@@ -6,9 +6,15 @@ import './index.css';
 
 import { ShellContext, ShellContextType } from '@so360/shell-context';
 
-// Mock Provider for Standalone Development
+// Mock Provider for Standalone Development — ONLY active in dev mode
 const MockShellProvider = ({ children }: { children: React.ReactNode }) => {
-    const mockContext: ShellContextType = {
+    if (import.meta.env.PROD) {
+        // In production, MFE runs inside the shell which provides real context.
+        // Render children without mock wrapper.
+        return <>{children}</>;
+    }
+
+    const mockContext = {
         user: {
             id: 'mock-user-id',
             email: 'admin@so360.com',
@@ -30,7 +36,18 @@ const MockShellProvider = ({ children }: { children: React.ReactNode }) => {
         setCurrentTenant: () => {},
         setCurrentOrg: () => {},
         accessToken: 'mock-access-token',
-    };
+        enabledModules: ['module:people'],
+        isModuleEnabled: () => true,
+        toggleModule: async () => {},
+        refreshModules: async () => {},
+        modulesLoading: false,
+        notifications: [],
+        unreadCount: 0,
+        markAsRead: async () => { },
+        markAllAsRead: async () => { },
+        emitNotification: async () => ({ success: true, notificationIds: [], errors: [] }),
+        recordActivity: async () => {},
+    } as unknown as ShellContextType;
 
     return (
         <ShellContext.Provider value={mockContext}>

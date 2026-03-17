@@ -19,12 +19,11 @@ export default defineConfig({
                 react: { singleton: true, requiredVersion: '^19.2.0' },
                 'react-dom': { singleton: true, requiredVersion: '^19.2.0' },
                 'react-router-dom': { singleton: true, requiredVersion: '^7.12.0' },
-                'framer-motion': { singleton: true },
                 'lucide-react': { singleton: true },
                 '@so360/shell-context': { singleton: true },
                 '@so360/design-system': { singleton: true },
                 '@so360/event-bus': { singleton: true },
-            },
+            } as any,
         }),
     ],
     build: {
@@ -34,10 +33,11 @@ export default defineConfig({
     },
     server: {
         port: 3014,
+        strictPort: true,
         cors: true,
         proxy: {
             '/people-api': {
-                target: 'http://localhost:3013',
+                target: 'http://localhost:3015',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/people-api/, ''),
             },
@@ -54,10 +54,11 @@ export default defineConfig({
     },
     preview: {
         port: 3014,
+        strictPort: true,
         cors: true,
         proxy: {
             '/people-api': {
-                target: 'http://localhost:3013',
+                target: 'http://localhost:3015',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/people-api/, ''),
             },
