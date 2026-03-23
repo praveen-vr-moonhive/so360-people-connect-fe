@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
 
 export default defineConfig({
-    base: 'http://localhost:3014/',
+    base: process.env.VITE_BASE_URL || 'http://localhost:3014/',
     plugins: [
         react({
             jsxRuntime: 'automatic',
