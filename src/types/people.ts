@@ -229,11 +229,11 @@ export interface PeopleEvent {
 }
 
 // API Response Types
+// Matches the flat envelope all people-connect-be endpoints actually return.
 export interface PaginatedResponse<T> {
   data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-  };
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
