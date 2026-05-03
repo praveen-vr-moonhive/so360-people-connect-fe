@@ -177,3 +177,20 @@ NGINX_BLOCK
           -H "Content-Type: application/json" \
           --data '{"purge_everything":true}')
         echo "✅ Cloudflare cache purged"
+
+    - name: Deployment Summary
+      if: always()
+      run: |
+        echo ""
+        echo "========================================="
+        if [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+          echo "Environment: Development"
+          echo "Service: so360-people-connect-fe"
+          echo "URL: https://dev.so360-people-connect.skyoffice360.com"
+        elif [ "${{ github.ref }}" == "refs/heads/qa" ]; then
+          echo "Environment: Staging"
+          echo "Service: so360-people-connect-fe"
+          echo "URL: https://staging.so360-people-connect.skyoffice360.com"
+        fi
+        echo "========================================="
+
